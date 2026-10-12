@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "${mixin_package}",
+  "refmap": "${mixin_refmap}",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "MixinEnergyCoreStructure",
+    "MixinTileEnergyStorageCore",
+    "MixinTileEnergyPylon",
+    "MixinEnergyPylon"
+  ],
+  "client": [
+    "MixinGuiEnergyCore",
+    "MixinRenderTileEnergyStorageCore"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

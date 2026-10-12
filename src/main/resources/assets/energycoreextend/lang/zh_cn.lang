@@ -1,0 +1,8 @@
+message.energycoreextend.discharge_first=储能超过 8 级容量，请先放电后再降级。
+gui.energycoreextend.unlimited=∞
+gui.energycoreextend.unlimited_capacity=无穷
+gui.energycoreextend.years=年
+gui.energycoreextend.days=天
+gui.energycoreextend.discharge_eta=预计耗尽时间：%s
+gui.energycoreextend.transfer=传输
+gui.energycoreextend.transfer_discharge=传输 / 耗尽时间

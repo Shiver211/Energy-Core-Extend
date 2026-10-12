@@ -1,0 +1,8 @@
+message.energycoreextend.discharge_first=Stored energy exceeds tier 8 capacity. Discharge the core before downgrading.
+gui.energycoreextend.unlimited=∞
+gui.energycoreextend.unlimited_capacity=Unlimited capacity
+gui.energycoreextend.years=yr
+gui.energycoreextend.days=d
+gui.energycoreextend.discharge_eta=Time to empty: %s
+gui.energycoreextend.transfer=Net transfer
+gui.energycoreextend.transfer_discharge=Net transfer / Time to empty

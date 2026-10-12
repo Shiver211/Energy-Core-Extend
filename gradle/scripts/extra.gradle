@@ -3,3 +3,80 @@
 
 // If you wish to use the default helper methods, uncomment the line below
 // apply from: 'gradle/scripts/helpers.gradle'
+
+// 独立的游戏内验收模组，不参与正式 JAR 的打包。
+sourceSets {
+    integrationTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+tasks.register('integrationTestJar', Jar) {
+    archiveBaseName.set('energycoreextend-integration')
+    archiveClassifier.set('dev')
+    destinationDirectory.set(layout.buildDirectory.dir('verification/artifacts'))
+    from(sourceSets.integrationTest.output)
+}
+
+if (project.hasProperty('eceIntegration')) {
+    def obfuscatedTestJar = tasks.named('reobfIntegrationTestJar')
+    obfuscatedTestJar.configure {
+        referenceClasspath.from(sourceSets.main.output)
+        destinationDirectory.set(layout.buildDirectory.dir('verification/artifacts'))
+    }
+    tasks.named('prepareObfModsFolder').configure {
+        from(obfuscatedTestJar)
+        into(layout.buildDirectory.dir('verification/obf/mods'))
+        filesMatching('mixinbooter-*.jar') { name = '!' + name }
+    }
+    ['runClient', 'runServer', 'runObfClient', 'runObfServer'].each { taskName ->
+        tasks.named(taskName).configure { task ->
+            boolean obfuscated = taskName.contains('Obf')
+            boolean server = taskName.endsWith('Server')
+            workingDir(layout.buildDirectory.dir('verification/' + (obfuscated ? 'obf' : 'dev')))
+            if (!obfuscated) {
+                dependsOn('integrationTestJar')
+                classpath(tasks.named('integrationTestJar'))
+            }
+            extraJvmArgs.add('-Denergycoreextend.integration=true')
+            if (!server) extraArgs.addAll('--width', '1100', '--height', '760')
+            doFirst {
+                workingDir.mkdirs()
+                new File(workingDir, 'integration-result.txt').delete()
+                if (!server && !new File(workingDir, 'options.txt').exists()) {
+                    new File(workingDir, 'options.txt').text = '''lang:zh_cn
+guiScale:2
+renderDistance:4
+mipmapLevels:0
+enableVsync:false
+maxFps:60
+pauseOnLostFocus:false
+soundCategory_master:0.0
+'''
+                }
+                if (server) {
+                    new File(workingDir, 'eula.txt').text = 'eula=true\n'
+                    new File(workingDir, 'server.properties').text = '''server-ip=127.0.0.1
+server-port=25567
+online-mode=false
+level-name=energycoreextend-integration
+level-type=FLAT
+generate-structures=false
+spawn-npcs=false
+spawn-animals=false
+spawn-monsters=false
+view-distance=3
+max-tick-time=-1
+'''
+                }
+            }
+            doLast {
+                def result = new File(workingDir, 'integration-result.txt')
+                if (!result.exists() || result.text.trim() != 'PASS') {
+                    throw new GradleException('游戏内验收未通过，请查看 ' + workingDir + '/logs/latest.log')
+                }
+            }
+        }
+    }
+}
