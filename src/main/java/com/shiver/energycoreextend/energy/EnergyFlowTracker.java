@@ -17,15 +17,18 @@ public final class EnergyFlowTracker {
         Arrays.fill(samples, BigInteger.ZERO);
     }
 
-    public long sample(BigInteger stored) {
+    public BigInteger sampleBig(BigInteger stored) {
         if (previous == null) reset(stored);
         BigInteger delta = stored.subtract(previous);
         total = total.subtract(samples[next]).add(delta);
         samples[next] = delta;
         previous = stored;
         next = (next + 1) % samples.length;
-        BigInteger average = total.divide(BigInteger.valueOf(samples.length));
-        return average.max(BigInteger.valueOf(Long.MIN_VALUE))
+        return total.divide(BigInteger.valueOf(samples.length));
+    }
+
+    public long sample(BigInteger stored) {
+        return sampleBig(stored).max(BigInteger.valueOf(Long.MIN_VALUE))
                 .min(BigInteger.valueOf(Long.MAX_VALUE)).longValue();
     }
 }

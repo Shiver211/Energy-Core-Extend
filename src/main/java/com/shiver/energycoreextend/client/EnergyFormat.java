@@ -22,9 +22,13 @@ public final class EnergyFormat {
         return String.format(Locale.ROOT, "%,d", value);
     }
 
+    public static BigInteger dischargeTicks(BigInteger stored, BigInteger rate) {
+        if (rate == null || rate.signum() >= 0) return BigInteger.ZERO;
+        return stored.divide(rate.negate());
+    }
+
     public static BigInteger dischargeTicks(BigInteger stored, long rate) {
-        if (rate >= 0) return BigInteger.ZERO;
-        return stored.divide(BigInteger.valueOf(rate).negate());
+        return dischargeTicks(stored, BigInteger.valueOf(rate));
     }
 
     public static String duration(BigInteger ticks, String yearUnit, String dayUnit) {

@@ -61,13 +61,14 @@ public abstract class MixinGuiEnergyCore extends GuiContainer {
         ece$line(I18n.format("info.bc.charge.txt"), 38, 0xFFAA00, true);
         ece$line(EnergyFormat.compact(ece$core().getStoredBig()) + " RF", 49, 0x555555, false);
 
-        long rate = tile.transferRate.value;
-        ece$line(I18n.format(rate < 0 ? "gui.energycoreextend.transfer_discharge"
+        BigInteger rate = ece$core().getTransferRateBig();
+        int sign = rate.signum();
+        ece$line(I18n.format(sign < 0 ? "gui.energycoreextend.transfer_discharge"
                 : "gui.energycoreextend.transfer"), 59, 0xFFAA00, true);
-        String signedRate = (rate > 0 ? "+" : rate < 0 ? "-" : "")
-                + EnergyFormat.compact(BigInteger.valueOf(rate).abs()) + " RF/t";
-        ece$line(signedRate, 70, rate > 0 ? 0x00FF00 : rate < 0 ? 0xFF0000 : 0x222222, rate > 0);
-        if (rate < 0) ece$line(ece$dischargeTime(), 80, 0x555555, false);
+        String signedRate = (sign > 0 ? "+" : sign < 0 ? "-" : "")
+                + EnergyFormat.compact(rate.abs()) + " RF/t";
+        ece$line(signedRate, 70, sign > 0 ? 0x00FF00 : sign < 0 ? 0xFF0000 : 0x222222, sign > 0);
+        if (sign < 0) ece$line(ece$dischargeTime(rate), 80, 0x555555, false);
         ci.cancel();
     }
 
@@ -77,8 +78,8 @@ public abstract class MixinGuiEnergyCore extends GuiContainer {
     }
 
     @Unique
-    private String ece$dischargeTime() {
-        return EnergyFormat.duration(EnergyFormat.dischargeTicks(ece$core().getStoredBig(), tile.transferRate.value),
+    private String ece$dischargeTime(BigInteger rate) {
+        return EnergyFormat.duration(EnergyFormat.dischargeTicks(ece$core().getStoredBig(), rate),
                 I18n.format("gui.energycoreextend.years"), I18n.format("gui.energycoreextend.days"));
     }
 
@@ -98,9 +99,14 @@ public abstract class MixinGuiEnergyCore extends GuiContainer {
             } else if (GuiHelper.isInRect(guiLeft + 5, guiTop + 48, xSize - 10, 9, mouseX, mouseY)
                     || GuiHelper.isInRect(guiLeft + 5, guiTop + 92, 170, 14, mouseX, mouseY)) {
                 ece$tooltip(EnergyFormat.grouped(ece$core().getStoredBig()) + " RF", mouseX, mouseY);
-            } else if (tile.transferRate.value < 0
+            } else if (GuiHelper.isInRect(guiLeft + 5, guiTop + 69, xSize - 10, 10, mouseX, mouseY)) {
+                BigInteger rate = ece$core().getTransferRateBig();
+                String prefix = rate.signum() > 0 ? "+" : rate.signum() < 0 ? "-" : "";
+                ece$tooltip(prefix + EnergyFormat.grouped(rate.abs()) + " RF/t", mouseX, mouseY);
+            } else if (ece$core().getTransferRateBig().signum() < 0
                     && GuiHelper.isInRect(guiLeft + 5, guiTop + 80, xSize - 10, 9, mouseX, mouseY)) {
-                ece$tooltip(I18n.format("gui.energycoreextend.discharge_eta", ece$dischargeTime()), mouseX, mouseY);
+                ece$tooltip(I18n.format("gui.energycoreextend.discharge_eta",
+                        ece$dischargeTime(ece$core().getTransferRateBig())), mouseX, mouseY);
             }
         } else if (!tierDown.enabled && GuiHelper.isInRect(tierDown.x, tierDown.y,
                 tierDown.width, tierDown.height, mouseX, mouseY)) {

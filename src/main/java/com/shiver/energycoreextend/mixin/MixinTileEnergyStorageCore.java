@@ -9,6 +9,7 @@ import com.brandon3055.draconicevolution.DEConfig;
 import com.brandon3055.draconicevolution.blocks.tileentity.TileEnergyStorageCore;
 import com.shiver.energycoreextend.api.IExtendedEnergyCore;
 import com.shiver.energycoreextend.energy.EnergyFlowTracker;
+import com.shiver.energycoreextend.energy.ManagedBigInteger;
 import com.shiver.energycoreextend.energy.ManagedEnergyStorage;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
@@ -36,16 +37,20 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
     @Shadow @Final public ManagedLong energy;
     @Shadow @Final public ManagedLong transferRate;
     @Shadow private long[] flowArray;
+    @Shadow private int ticksElapsed;
     @Shadow public abstract boolean validateStructure();
     @Shadow public abstract long getExtendedCapacity();
 
     @Unique private ManagedEnergyStorage ece$energy;
+    @Unique private ManagedBigInteger ece$transferRate;
     @Unique private final EnergyFlowTracker ece$flow = new EnergyFlowTracker();
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void ece$registerEnergy(CallbackInfo ci) {
         ece$energy = register("energycoreextend:energy", new ManagedEnergyStorage())
                 .saveToTile().syncViaTile().finish();
+        ece$transferRate = register("energycoreextend:flow", new ManagedBigInteger())
+                .syncViaTile().finish();
     }
 
     @Override
@@ -59,9 +64,18 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
     }
 
     @Override
+    public BigInteger getTransferRateBig() {
+        return isUnlimited() && ece$transferRate != null ? ece$transferRate.value
+                : BigInteger.valueOf(transferRate.value);
+    }
+
+    @Override
     public void readExtraNBT(NBTTagCompound compound) {
         super.readExtraNBT(compound);
-        if (isUnlimited()) ece$flow.reset(getStoredBig());
+        if (isUnlimited()) {
+            ece$flow.reset(getStoredBig());
+            if (ece$transferRate != null) ece$transferRate.setValue(BigInteger.ZERO);
+        }
     }
 
     @Inject(method = "getCapacity", at = @At("HEAD"), cancellable = true)
@@ -135,10 +149,16 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
         energy.lastTickValue = energy.value;
         Arrays.fill(flowArray, 0);
         transferRate.value = 0;
+        if (ece$transferRate != null) {
+            ece$transferRate.setValue(BigInteger.ZERO);
+        }
         validateStructure();
         markDirty();
         dataManager.forceSync();
         dataManager.forceSync(transferRate);
+        if (ece$transferRate != null) {
+            dataManager.forceSync(ece$transferRate);
+        }
         ci.cancel();
     }
 
@@ -146,7 +166,14 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
     @Inject(method = {"update", "func_73660_a"}, at = @At(value = "INVOKE",
             target = "Lcom/brandon3055/brandonscore/blocks/TileBCBase;update()V"))
     private void ece$trackActualFlow(CallbackInfo ci) {
-        if (!world.isRemote && isUnlimited()) transferRate.value = ece$flow.sample(getStoredBig());
+        if (!world.isRemote && isUnlimited()) {
+            BigInteger sampled = ece$flow.sampleBig(getStoredBig());
+            transferRate.value = sampled.max(BigInteger.valueOf(Long.MIN_VALUE))
+                    .min(BigInteger.valueOf(Long.MAX_VALUE)).longValue();
+            if (ticksElapsed % 20 == 0 && ece$transferRate != null) {
+                ece$transferRate.setValue(sampled);
+            }
+        }
     }
 
     @Redirect(method = {"update", "func_73660_a"}, at = @At(value = "FIELD",

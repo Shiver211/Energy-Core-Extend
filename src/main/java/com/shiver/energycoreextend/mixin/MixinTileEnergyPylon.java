@@ -47,6 +47,12 @@ public abstract class MixinTileEnergyPylon extends TileBCBase implements IExtend
     }
 
     @Override
+    public BigInteger getTransferRateBig() {
+        TileEnergyStorageCore core = hasCoreLock.value ? getCore() : null;
+        return core == null ? BigInteger.ZERO : ((IExtendedEnergyCore) core).getTransferRateBig();
+    }
+
+    @Override
     public long receiveEnergyLong(long amount, boolean simulate) {
         return ece$transfer(amount, simulate, false);
     }
