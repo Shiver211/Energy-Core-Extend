@@ -39,6 +39,14 @@ dependencies {
     implementation rfg.deobf('curse.maven:CodeChickenLib-242818:2779848')
     implementation rfg.deobf('curse.maven:RedstoneFlux-270789:2920436')
 
+    // 可选的通量网络适配，-PeceWithoutFlux 用于验证没有通量网络的运行环境。
+    def fluxNetworks = rfg.deobf('curse.maven:flux-networks-248020:3178199')
+    compileOnly fluxNetworks
+    testImplementation fluxNetworks
+    if (!project.hasProperty('eceWithoutFlux')) {
+        runtimeOnly fluxNetworks
+    }
+
     // Include StripLatestForgeRequirements by default for the dev env, saves everyone a hassle
     runtimeOnly 'com.cleanroommc:strip-latest-forge-requirements:1.0'
     // Include OSXNarratorBlocker by default for the dev env, for M1+ Macs

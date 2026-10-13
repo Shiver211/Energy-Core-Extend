@@ -37,6 +37,7 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
     @Shadow @Final public ManagedLong transferRate;
     @Shadow private long[] flowArray;
     @Shadow public abstract boolean validateStructure();
+    @Shadow public abstract long getExtendedCapacity();
 
     @Unique private ManagedEnergyStorage ece$energy;
     @Unique private final EnergyFlowTracker ece$flow = new EnergyFlowTracker();
@@ -73,26 +74,39 @@ public abstract class MixinTileEnergyStorageCore extends TileBCBase implements I
         if (isUnlimited()) cir.setReturnValue(ece$energy.storage.getStoredLimited(Long.MAX_VALUE / 2));
     }
 
-    @Inject(method = "receiveEnergy", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "receiveEnergy(IZ)I", at = @At("HEAD"), cancellable = true)
     private void ece$receive(int amount, boolean simulate, CallbackInfoReturnable<Integer> cir) {
-        if (!isUnlimited()) return;
-        int received = world.isRemote ? 0 : (int) ece$energy.storage.receive(amount, simulate);
-        if (!simulate && received > 0) ece$energyChanged();
-        cir.setReturnValue(received);
+        cir.setReturnValue((int) receiveEnergyLong(amount, simulate));
     }
 
-    @Inject(method = "extractEnergy", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "extractEnergy(IZ)I", at = @At("HEAD"), cancellable = true)
     private void ece$extract(int amount, boolean simulate, CallbackInfoReturnable<Integer> cir) {
-        if (!isUnlimited()) return;
-        int extracted = world.isRemote ? 0 : (int) ece$energy.storage.extract(amount, simulate);
-        if (!simulate && extracted > 0) ece$energyChanged();
-        cir.setReturnValue(extracted);
+        cir.setReturnValue((int) extractEnergyLong(amount, simulate));
+    }
+
+    @Override
+    public long receiveEnergyLong(long amount, boolean simulate) {
+        if (world.isRemote || amount <= 0) return 0;
+        long received = isUnlimited() ? ece$energy.storage.receive(amount, simulate)
+                : Math.min(amount, Math.max(0, getExtendedCapacity() - energy.value));
+        if (!simulate && received > 0) ece$energyChanged(received);
+        return received;
+    }
+
+    @Override
+    public long extractEnergyLong(long amount, boolean simulate) {
+        if (world.isRemote || amount <= 0) return 0;
+        long extracted = isUnlimited() ? ece$energy.storage.extract(amount, simulate)
+                : Math.min(amount, energy.value);
+        if (!simulate && extracted > 0) ece$energyChanged(-extracted);
+        return extracted;
     }
 
     @Unique
-    private void ece$energyChanged() {
+    private void ece$energyChanged(long finiteChange) {
         // 原字段只作为兼容视图，9 级的真实能量由专用对象保存。
-        energy.value = ece$energy.storage.getStoredLimited(Long.MAX_VALUE);
+        energy.value = isUnlimited() ? ece$energy.storage.getStoredLimited(Long.MAX_VALUE)
+                : energy.value + finiteChange;
         markDirty();
     }
 

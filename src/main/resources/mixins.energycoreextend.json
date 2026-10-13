@@ -8,11 +8,14 @@
     "MixinEnergyCoreStructure",
     "MixinTileEnergyStorageCore",
     "MixinTileEnergyPylon",
-    "MixinEnergyPylon"
+    "MixinEnergyPylon",
+    "MixinFluxNetworkServer",
+    "MixinFluxNetworkStatistics"
   ],
   "client": [
     "MixinGuiEnergyCore",
-    "MixinRenderTileEnergyStorageCore"
+    "MixinRenderTileEnergyStorageCore",
+    "MixinLineChart"
   ],
   "injectors": {
     "defaultRequire": 1
